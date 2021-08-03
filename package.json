@@ -1,0 +1,33 @@
+{
+  "name": "screepsfirstbot",
+  "version": "0.0.1",
+  "description": "Just trying to make a simple bot for Screeps game",
+  "main": "index.js",
+  "scripts": {
+    "build-ts": "npx tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "gulp-deploy1": "gulp deploy_1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matwej29/screepsFirstBot.git"
+  },
+  "author": "matwej29",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/matwej29/screepsFirstBot/issues"
+  },
+  "homepage": "https://github.com/matwej29/screepsFirstBot#readme",
+  "dependencies": {
+    "gulp": "^4.0.2",
+    "gulp-cli": "^2.3.0",
+    "lodash": "3.10.1",
+    "typescript": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/screeps": "^3.2.3",
+    "@types/lodash": "3.10.1",
+    "@types/node": "^16.4.0",
+    "nodemon": "^2.0.12"
+  }
+}
