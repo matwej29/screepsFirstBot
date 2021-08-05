@@ -1,63 +1,114 @@
 import * as _ from "lodash";
 
 interface task {
-  object: Structure["id"];
-  maxCreeps: number;
+  objectId: Structure["id"] | Creep["id"] | string;
+  creepClass: string;
   currentCreeps: any[];
   taskType: string;
+}
+
+interface uniTask extends task {
+  objectId: Structure["id"] | Creep["id"] | string;
+  creepClass: "uni";
+  currentCreeps: any[];
+  taskType: "harvest" | "build" | "repair" | "upgrade";
+}
+
+interface warTask extends task {
+  objectId: Structure["id"] | Creep["id"] | string;
+  creepClass: "war";
+  currentCreeps: any[];
+  taskType: "defend" | "attackRoom";
 }
 
 class Tasks {
   tasks: task[] = [];
 
-  createTasks(controller: StructureController, ...structures: AnyStructure[]) {
+  createTasks(room: Room) {
+    this.createTask_upgradeController(room?.controller.id);
+    let structures: AnyStructure[] = room.find(FIND_MY_STRUCTURES, {
+      filter: (structure: AnyStructure) => {
+        return (
+          (structure.structureType == STRUCTURE_SPAWN ||
+            structure.structureType == STRUCTURE_EXTENSION ||
+            structure.structureType == STRUCTURE_TOWER ||
+            structure.structureType == STRUCTURE_FACTORY) &&
+          structure.store.getFreeCapacity(RESOURCE_ENERGY) > 0
+        );
+      },
+    });
     for (let structure of structures) {
       this.createTask_harvestToStructure(structure);
     }
-    this.createTask_upgradeController(controller);
+    structures = room.find(FIND_MY_STRUCTURES);
+    for (let site of room.find(FIND_CONSTRUCTION_SITES)) {
+      this.createTask_buildOnConstructionSite(site.id);
+    }
+
+    // const hostiles = room.find(FIND_HOSTILE_CREEPS);
+    // if (hostiles != []) {
+    //   _.forEach(hostiles, (hostile) => {
+    //     this.createTask_defendRoom(hostile.id);
+    //   });
+    // }
+  }
+
+  pushTask(tasks: task[], task: task) {
+    if (
+      _.find(tasks, {
+        objectId: task.objectId,
+        taskType: task.taskType,
+      }) === undefined
+    ) {
+      tasks.push(task);
+    }
   }
 
   createTask_harvestToStructure(structure: AnyStructure) {
-    const task_harvestToStructure: task = {
-      object: structure.id,
-      maxCreeps: 2,
+    const task_harvestToStructure: uniTask = {
+      objectId: structure.id,
+      creepClass: "uni",
       currentCreeps: [],
       taskType: "harvest",
     };
-    if (
-      _.find(this.tasks, { object: structure.id, taskType: "harvest" }) ===
-      undefined
-    ) {
-      this.tasks.push(task_harvestToStructure);
-    }
+    this.pushTask(this.tasks, task_harvestToStructure);
   }
 
-  createTask_upgradeController(controller: StructureController) {
-    const task_upgradeController: task = {
-      object: controller.id,
-      maxCreeps: 1,
+  createTask_upgradeController(controller: StructureController["id"]) {
+    const task_upgradeController: uniTask = {
+      objectId: controller,
+      creepClass: "uni",
       currentCreeps: [],
       taskType: "upgrade",
     };
-    if (
-      _.find(this.tasks, { object: controller.id, taskType: "upgrade" }) ===
-      undefined
-    ) {
-      this.tasks.push(task_upgradeController);
-    }
+    this.pushTask(this.tasks, task_upgradeController);
   }
 
-  getUnpocessedTask(): task {
-    let min = 10000;
-    let id = 0;
-    for (let i = 0; i++; i < this.tasks.length) {
-      let task = this.tasks[i];
-      if (task.currentCreeps.length < min) {
-        min = task.currentCreeps.length;
-        id = i;
-      }
-    }
-    return this.tasks[id];
+  // createTask_defendRoom(hostile: Creep["id"]) {
+  //   const task_attackCreep: task = {
+  //     objectId: hostile,
+  //     maxCreeps: 1,
+  //     currentCreeps: [],
+  //     taskType: "defend",
+  //   };
+  //   this.pushTask(task_attackCreep);
+  // }
+
+  createTask_buildOnConstructionSite(site: ConstructionSite["id"]) {
+    const task_buildStructure: uniTask = {
+      objectId: site,
+      creepClass: "uni",
+      currentCreeps: [],
+      taskType: "build",
+    };
+    this.pushTask(this.tasks, task_buildStructure);
+  }
+
+  getUnpocessedTask(creepClass: task["creepClass"]): task {
+    const task = _(this.tasks)
+      .filter((task) => task.creepClass == creepClass)
+      .min((task) => task.currentCreeps.length);
+    return task;
   }
 
   assignCreepToTask(creep: Creep, task: task) {
@@ -73,13 +124,16 @@ class Tasks {
     const tasksToDelele: task[] = [];
     _.forEach(this.tasks, (task, id) => {
       task.currentCreeps = [];
-      const object = Game.getObjectById(task.object);
-      if (task.taskType === "harvest" && object.store.getFreeCapacity() == 0) {
+      if (
+        task.taskType === "harvest" &&
+        Game.structures[task.objectId].store.getFreeCapacity() == 0
+      ) {
         tasksToDelele.push(task);
       }
-      while (tasksToDelele.length > 0) {
-        this.deleteTask(tasksToDelele[0]);
-      }
+      if (task.taskType === "build" && Game.structures[task.objectId])
+        while (tasksToDelele.length > 0) {
+          this.deleteTask(tasksToDelele[0]);
+        }
     });
   }
 }
